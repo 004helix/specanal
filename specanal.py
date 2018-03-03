@@ -1,9 +1,11 @@
 #!/usr/bin/env python
 
-from __future__ import print_function
 import numpy
-import fftw3
-import sys
+try:
+    import fftw3
+    fftw = True
+except ImportError:
+    fftw = False
 
 
 class bar:
@@ -43,12 +45,19 @@ class specanal:
         self.chunk_size = self.frames * channels * 2
 
         # pyfftw3
-        z1 = numpy.zeros(self.frames, float)
-        z2 = numpy.zeros(self.frames / 2 + 1, complex)
-        self.fftw_in = numpy.require(z1, requirements=['ALIGNED'])
-        self.fftw_out = numpy.require(z2, requirements=['ALIGNED'])
-        self.fftw = fftw3.Plan(self.fftw_in, self.fftw_out,
-                               direction='forward', flags=['measure'])
+        if fftw:
+            z1 = numpy.zeros(self.frames, float)
+            z2 = numpy.zeros(self.frames / 2 + 1, complex)
+            self.fftw_in = numpy.require(z1, requirements=['ALIGNED'])
+            self.fftw_out = numpy.require(z2, requirements=['ALIGNED'])
+            self.fftw = fftw3.Plan(self.fftw_in, self.fftw_out,
+                                   direction='forward', flags=['measure'])
+        # a little bit slower
+        else:
+            def numpy_fft():
+                self.fftw_out = numpy.fft.fft(self.fftw_in)
+            self.fftw_in = numpy.zeros(self.frames, float)
+            self.fftw = numpy_fft
 
         # bars
         self.bars = list()
@@ -144,6 +153,8 @@ class specanal:
 
 
 if __name__ == '__main__':
+    import sys
+
     bars = specanal('s16le', 48000, 2, 50, 14000)
     size = bars.frames * bars.channels * 2
 
