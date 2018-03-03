@@ -155,27 +155,32 @@ class specanal:
 if __name__ == '__main__':
     import sys
 
-    bars = specanal('s16le', 48000, 2, 50, 14000)
-    size = bars.frames * bars.channels * 2
+    sa = specanal('s16le', 48000, 2, 50, 14000)
+    size = sa.chunk_size
 
-    for bar in bars.bars:
-        print('%02d %f -> %f' % (bar.idx, bar.freq1, bar.freq2))
+    for bar in sa.bars:
+        sys.stdout.write('%02d %f -> %f\n' % (bar.idx, bar.freq1, bar.freq2))
+
+    try:
+        stdin = sys.stdin.buffer
+    except AttributeError:
+        stdin = sys.stdin
 
     while True:
-        data = sys.stdin.read(size)
-        if len(data) != size:
+        data = stdin.read(size)
+        if not data:
             break
 
-        bars.process(data)
+        sa.process(data)
 
         line = ['|']
         for cutoff in (61440, 57344, 53248, 49152, 45056, 40960, 36864,
                        32768, 28672, 24576, 20480, 16384, 12288, 8192, 4096):
-            for val in bars.values:
+            for val in sa.values:
                 line.append('## ' if val > cutoff else '   ')
             line.append('|\n|')
 
-        for bar in bars.bars:
+        for bar in sa.bars:
             line.append('%02d ' % (bar.idx,))
 
         line.append('|\n')
