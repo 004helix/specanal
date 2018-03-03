@@ -1,4 +1,4 @@
-# Pure python audio sperctrum analyzer and drygalki
+# Pure python audio spectrum analyzer and drygalki
 
 - `specanal.py` - spectrum analyzer class
 - `drygalki.py` - drygalki class
