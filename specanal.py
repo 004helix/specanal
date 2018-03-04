@@ -97,12 +97,12 @@ class specanal:
         # normalize (exponential moving average)
         self.ema = 0
 
-    def process(self, data):
+    def convert(self, raw_data):
         # check data size
-        assert len(data) == self.chunk_size
+        assert len(raw_data) == self.chunk_size
 
         # convert to numpy array
-        data = numpy.frombuffer(data, dtype=self.datatype)
+        data = numpy.frombuffer(raw_data, dtype=self.datatype)
 
         if self.channels > 1:
             # remix all channels to mono
@@ -114,16 +114,21 @@ class specanal:
             data = data.astype(float).sum(axis=1)
 
             # normalize -1.0...1.0
-            self.fftw_in[:] = numpy.divide(data, 32768 * self.channels)
+            return numpy.divide(data, 32768 * self.channels)
 
         else:
             # already mono input
             data = data.astype(float)
 
             # normalize -1.0...1.0
-            self.fftw_in[:] = numpy.divide(data, 32768)
+            return numpy.divide(data, 32768)
+
+    def process(self, norm_data):
+        # check normalized data size
+        assert len(norm_data) == self.frames
 
         # run DFT
+        self.fftw_in[:] = norm_data
         self.fftw()
 
         # calculate the absolute value for each complex value in result
@@ -171,7 +176,7 @@ if __name__ == '__main__':
         if not data:
             break
 
-        sa.process(data)
+        sa.process(sa.convert(data))
 
         line = ['|']
         for cutoff in (61440, 57344, 53248, 49152, 45056, 40960, 36864,

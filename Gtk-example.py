@@ -71,7 +71,7 @@ class Example(gtk.Window):
         ctx = self.darea.window.cairo_create()
 
         # specanal process
-        self.sa.process(chunk)
+        self.sa.process(self.sa.convert(chunk))
 
         # clear specanal surface
         self.sa_ctx.set_source_rgb(0, 0, 0)
@@ -90,7 +90,7 @@ class Example(gtk.Window):
             x += 7
 
         # drygalki process
-        self.dg.process(chunk)
+        self.dg.process(self.dg.convert(chunk))
 
         # clear drygalki surface
         self.dg_ctx.set_source_rgb(0, 0, 0)
