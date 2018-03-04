@@ -7,31 +7,28 @@
 
 import os
 import sys
-import gtk
-import glib
 import numpy
 import cairo
 import specanal
 import drygalki
+from gi.repository import Gtk, GLib
 
 
-class Example(gtk.Window):
+class Example(Gtk.Window):
     def __init__(self):
         super(Example, self).__init__()
 
-        self.set_title("specanal / drygalki")
-        self.resize(300, 200)
-        self.set_position(gtk.WIN_POS_CENTER)
-
-        self.connect("destroy", gtk.main_quit)
-
-        self.darea = gtk.DrawingArea()
-        self.darea.connect("expose-event", self.expose)
+        self.darea = Gtk.DrawingArea()
+        self.darea.connect("draw", self.on_draw)
         self.add(self.darea)
 
-        stdin = glib.IOChannel(sys.stdin.fileno())
-        stdin.add_watch(glib.IO_IN | glib.IO_HUP,
-                        self.update, priority=glib.PRIORITY_HIGH)
+        self.set_title("specanal / drygalki")
+        self.resize(300, 200)
+        self.set_position(Gtk.WindowPosition.CENTER)
+        self.connect("delete-event", Gtk.main_quit)
+
+        stdin = GLib.IOChannel(sys.stdin.fileno())
+        stdin.add_watch(GLib.IO_IN, self.on_data_ready, priority=GLib.PRIORITY_HIGH)
 
         # init spectrum analyzer:
         #   input:
@@ -57,21 +54,21 @@ class Example(gtk.Window):
         self.dg_ctx = cairo.Context(self.dg_sfc)
         self.dg_ctx.set_line_width(1)
 
-        self.data = ''
+        self.buffer = b''
+
         self.show_all()
 
-    def update(self, stdin, condition):
-        self.data += os.read(sys.stdin.fileno(), 9600)
-        if len(self.data) < 9600:
+    # called when data available in stdin
+    def on_data_ready(self, stdin, condition):
+        self.buffer += os.read(sys.stdin.fileno(), 9600)
+        if len(self.buffer) < 9600:
             return True
 
-        chunk = self.data[0:9600]
-        self.data = self.data[9600:]
+        data = self.buffer[0:9600]
+        self.buffer = self.buffer[9600:]
 
-        ctx = self.darea.window.cairo_create()
-
-        # specanal process
-        self.sa.process(self.sa.convert(chunk))
+        # specanal: convert and process
+        self.sa.process(self.sa.convert(data))
 
         # clear specanal surface
         self.sa_ctx.set_source_rgb(0, 0, 0)
@@ -89,8 +86,8 @@ class Example(gtk.Window):
             self.sa_ctx.fill()
             x += 7
 
-        # drygalki process
-        self.dg.process(self.dg.convert(chunk))
+        # drygalki: convert and process
+        self.dg.process(self.dg.convert(data))
 
         # clear drygalki surface
         self.dg_ctx.set_source_rgb(0, 0, 0)
@@ -111,9 +108,17 @@ class Example(gtk.Window):
         self.dg_ctx.line_to(x, y)
         self.dg_ctx.stroke()
 
-        # copy both widgets to main surface
-        x = self.allocation.width / 2 - 100
-        y = self.allocation.height / 2 - 50
+        # queue draw
+        self.darea.queue_draw()
+
+        return True
+
+    # copy both widgets to main surface
+    def on_draw(self, wid, ctx):
+
+        w, h = self.get_size()
+        x = w / 2 - 100
+        y = h / 2 - 50
 
         ctx.set_source_surface(self.sa_sfc, x, y)
         ctx.rectangle(x, y, 200, 64)
@@ -125,14 +130,7 @@ class Example(gtk.Window):
         ctx.rectangle(x, y, 100, 50)
         ctx.fill()
 
-        return True
-
-    def expose(self, widget, event):
-        ctx = widget.window.cairo_create()
-        ctx.set_source_rgb(0.2, 0.2, 0.2)
-        ctx.paint()
-
 
 if __name__ == '__main__':
-    Example()
-    gtk.main()
+    app = Example()
+    Gtk.main()
